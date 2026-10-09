@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="OUR DATABASE: il database condiviso per film, cibo, vini, viaggi e idee.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>OUR DATABASE</title>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-mark" aria-hidden="true">♡</div>
+    <div class="brand-copy"><p class="eyebrow">IL NOSTRO SPAZIO CONDIVISO</p><h1>OUR DATABASE</h1></div>
+    <button id="installButton" class="install-button hidden" type="button">Installa</button>
+  </header>
+
+  <main class="app-main">
+    <section class="welcome-card">
+      <p class="eyebrow">CIAO, BENVENUTI</p>
+      <h2>Tutto quello che<br>vogliamo ricordare.</h2>
+      <p class="welcome-text">Film, posti da provare, bottiglie da ritrovare e idee per il prossimo viaggio.</p>
+      <div class="status-line"><span id="connectionDot" class="status-dot"></span><span id="connectionStatus">Controllo connessione…</span></div>
+    </section>
+
+    <section class="section-block" aria-labelledby="categoriesTitle">
+      <div class="section-heading"><div><p class="eyebrow">ESPLORA</p><h2 id="categoriesTitle">Le categorie</h2></div></div>
+      <div id="categoryGrid" class="category-grid">
+        <button class="category-card" data-category="FILM"><span class="category-icon">🎬</span><span class="category-name">Film</span></button>
+        <button class="category-card" data-category="SERIE"><span class="category-icon">📺</span><span class="category-name">Serie TV</span></button>
+        <button class="category-card" data-category="CIBO"><span class="category-icon">🍝</span><span class="category-name">Cibo</span></button>
+        <button class="category-card" data-category="VINI"><span class="category-icon">🍷</span><span class="category-name">Vini &amp; Drinks</span></button>
+        <button class="category-card" data-category="RISTORANTI"><span class="category-icon">🍽️</span><span class="category-name">Ristoranti</span></button>
+        <button class="category-card" data-category="VIAGGI"><span class="category-icon">✈️</span><span class="category-name">Viaggi</span></button>
+        <button class="category-card" data-category="MUSICA"><span class="category-icon">🎵</span><span class="category-name">Musica</span></button>
+        <button class="category-card" data-category="LIBRI"><span class="category-icon">📚</span><span class="category-name">Libri</span></button>
+        <button class="category-card" data-category="IDEE"><span class="category-icon">💡</span><span class="category-name">Idee</span></button>
+      </div>
+    </section>
+
+    <section class="section-block setup-notice">
+      <div class="notice-icon" aria-hidden="true">✓</div>
+      <div><h2>La base dell'app è pronta</h2><p>Questa prima versione verifica l'interfaccia installabile e la cache offline. Nel prossimo passaggio collegheremo il database Google Sheets, così compariranno i vostri elementi reali.</p></div>
+    </section>
+    <p class="footer-note">OUR DATABASE · Uno spazio per due</p>
+  </main>
+  <nav class="bottom-nav" aria-label="Navigazione principale"><div class="nav-item active"><span>⌂</span><span>Home</span></div><div class="nav-item"><span>☆</span><span>Preferiti</span></div><div class="nav-item"><span>＋</span><span>Aggiungi</span></div></nav>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
