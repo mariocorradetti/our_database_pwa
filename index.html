@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10131c">
+  <meta name="description" content="OUR DATABASE: il database condiviso di film, cibo e vini.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OUR DATABASE">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <title>OUR DATABASE</title>
+  <style>
+    :root { color-scheme: dark; --bg:#10131c; --panel:#181d29; --text:#f6f7fb; --muted:#a8b0c2; --line:#2c3445; --accent:#a6e3a1; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    body { padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+    .app { height:100%; min-height:0; display:flex; flex-direction:column; }
+    header { flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:10px 14px; padding-top:max(10px,env(safe-area-inset-top)); background:rgba(16,19,28,.98); border-bottom:1px solid var(--line); }
+    .logo { width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#c6f6bd,#7bc7be);color:#111827;font-weight:900;letter-spacing:-1px; }
+    .brand { flex:1; min-width:0; }
+    .brand strong { display:block;font-size:15px;letter-spacing:.06em; }
+    .brand span { display:block;color:var(--muted);font-size:11px;margin-top:2px; }
+    .open { border:1px solid #46516a;border-radius:12px;padding:10px 12px;color:var(--text);background:var(--panel);font:inherit;font-size:12px;font-weight:650;text-decoration:none;white-space:nowrap; }
+    main { flex:1; min-height:0; position:relative; background:var(--bg); }
+    iframe { display:block;width:100%;height:100%;min-height:0;border:0;background:var(--bg); }
+    .loading { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--bg);z-index:2;transition:opacity .2s ease; }
+    .loading.done { opacity:0;pointer-events:none; }
+    .spinner { width:28px;height:28px;border:3px solid #394257;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite; }
+    .loading p { margin:0;color:var(--muted);font-size:13px; }
+    .hint { display:none;max-width:340px;text-align:center;line-height:1.45;padding:14px;color:var(--muted);font-size:12px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @media (prefers-reduced-motion:reduce) { .spinner { animation:none; } .loading { transition:none; } }
+    @media (max-width:380px) { header {gap:8px;padding-left:10px;padding-right:10px;} .brand strong {font-size:13px;} .open {padding:9px;font-size:11px;} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo" aria-hidden="true">OD</div>
+      <div class="brand"><strong>OUR DATABASE</strong><span>Il nostro archivio condiviso</span></div>
+      <a class="open" id="openDirect" href="#" target="_blank" rel="noopener">Apri direttamente ↗</a>
+    </header>
+    <main>
+      <div class="loading" id="loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Connessione al database…</p>
+        <div class="hint" id="hint">Se il database non si apre, premi «Apri direttamente» per aprirlo in una scheda del browser.</div>
+      </div>
+      <iframe id="database" title="OUR DATABASE" allow="clipboard-read; clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </main>
+  </div>
+  <script>
+    // Sostituisci l'URL qui sotto con quello della Web App Apps Script che termina in /exec.
+    const DATABASE_URL = 'https://script.google.com/macros/s/AKfycby47wKtD6kvs_sPYGJCbLkbgjo4H5sjrkaHHg486PxzPtt5WqevI_df-TLelsjO6VaOPA/exec';
+    const frame = document.getElementById('database');
+    const openDirect = document.getElementById('openDirect');
+    const loading = document.getElementById('loading');
+    const hint = document.getElementById('hint');
+    if (!DATABASE_URL.startsWith('https://script.google.com/macros/s/') || !DATABASE_URL.endsWith('/exec')) {
+      loading.querySelector('p').textContent = 'Configurazione richiesta';
+      hint.style.display = 'block';
+      hint.textContent = 'Apri index.html e inserisci l’URL della Web App Google Apps Script nel campo DATABASE_URL.';
+      openDirect.style.display = 'none';
+    } else {
+      openDirect.href = DATABASE_URL;
+      frame.src = DATABASE_URL;
+      const timeout = setTimeout(() => { hint.style.display = 'block'; }, 10000);
+      frame.addEventListener('load', () => { clearTimeout(timeout); loading.classList.add('done'); }, { once:true });
+    }
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker non registrato', err)));
+    }
+  </script>
+</body>
+</html>
