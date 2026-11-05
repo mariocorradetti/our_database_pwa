@@ -1359,14 +1359,36 @@ button { -webkit-appearance:none; }
   const ODB_KEY_STORAGE = 'our_database_api_key_v1';
 
   function getApiKey() {
-    let key = localStorage.getItem(ODB_KEY_STORAGE) || '';
-    if (!key) {
-      key = window.prompt('Inserisci la chiave API di OUR DATABASE (OUR_DATABASE_API_KEY configurata nelle proprietà dello script):') || '';
-      key = key.trim();
-      if (key) localStorage.setItem(ODB_KEY_STORAGE, key);
-    }
-    if (!key) throw new Error('Chiave API non inserita. Ricarica l’app per riprovare.');
-    return key;
+    const saved = localStorage.getItem(ODB_KEY_STORAGE) || '';
+    if (saved) return Promise.resolve(saved);
+    return new Promise(function(resolve, reject) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(3,8,15,.88);';
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:430px;padding:24px;border-radius:22px;background:#171e2b;border:1px solid #3b4a5e;color:#f8fafc;box-shadow:0 20px 60px #0008">
+          <div style="font-size:12px;font-weight:850;letter-spacing:.12em;color:#a7f3d0;margin-bottom:8px">CONFIGURAZIONE INIZIALE</div>
+          <h2 style="font-size:23px;margin:0 0 9px">Collega Google Sheets</h2>
+          <p style="font-size:14px;line-height:1.5;color:#b4bfd0;margin:0 0 17px">Inserisci la chiave API configurata nelle Proprietà script di Google Apps Script con nome <b>OUR_DATABASE_API_KEY</b>. La chiave verrà salvata solo su questo telefono.</p>
+          <input id="odbApiKeyInput" type="password" autocomplete="off" placeholder="Chiave API" style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #46556a;background:#0c1018;color:#fff;font-size:16px;margin-bottom:13px">
+          <div id="odbApiKeyError" style="display:none;color:#ffb4b4;font-size:13px;margin-bottom:10px">Inserisci una chiave valida.</div>
+          <button id="odbApiKeySave" style="width:100%;min-height:50px;border:0;border-radius:13px;background:#a7f3d0;color:#10241e;font-size:16px;font-weight:800">Collega database</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('#odbApiKeyInput');
+      const error = overlay.querySelector('#odbApiKeyError');
+      const save = overlay.querySelector('#odbApiKeySave');
+      save.addEventListener('click', function() {
+        const key = input.value.trim();
+        if (!key) { error.style.display = 'block'; input.focus(); return; }
+        localStorage.setItem(ODB_KEY_STORAGE, key);
+        overlay.remove();
+        resolve(key);
+      });
+      input.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') save.click();
+      });
+      setTimeout(function() { input.focus(); }, 250);
+    });
   }
 
   function apiPayload(action, args) {
@@ -1393,45 +1415,45 @@ button { -webkit-appearance:none; }
   }
 
   function callDatabase(action, args) {
-    return new Promise(function(resolve, reject) {
-      let key;
-      try { key = getApiKey(); } catch (error) { reject(error); return; }
-      const callbackName = '__odb_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-      const script = document.createElement('script');
-      const url = new URL(ODB_API_URL);
-      const payload = apiPayload(action, args);
-      url.searchParams.set('action', action);
-      url.searchParams.set('key', key);
-      url.searchParams.set('callback', callbackName);
-      if (Object.keys(payload).length) url.searchParams.set('payload', JSON.stringify(payload));
-      let finished = false;
-      const timer = setTimeout(function() {
-        finish(new Error('Timeout: il database non risponde. Controlla la connessione.'));
-      }, 30000);
-      function cleanup() {
-        clearTimeout(timer);
-        script.remove();
-        try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
-      }
-      function finish(error, value) {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        if (error) reject(error); else resolve(value);
-      }
-      window[callbackName] = function(response) {
-        if (!response || response.ok !== true) {
-          finish(new Error(response && response.error ? response.error : 'Risposta non valida dal database.'));
-          return;
+    return getApiKey().then(function(key) {
+      return new Promise(function(resolve, reject) {
+        const callbackName = '__odb_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+        const script = document.createElement('script');
+        const url = new URL(ODB_API_URL);
+        const payload = apiPayload(action, args);
+        url.searchParams.set('action', action);
+        url.searchParams.set('key', key);
+        url.searchParams.set('callback', callbackName);
+        if (Object.keys(payload).length) url.searchParams.set('payload', JSON.stringify(payload));
+        let finished = false;
+        const timer = setTimeout(function() {
+          finish(new Error('Timeout: il database non risponde. Controlla la connessione.'));
+        }, 30000);
+        function cleanup() {
+          clearTimeout(timer);
+          script.remove();
+          try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
         }
-        finish(null, response.data);
-      };
-      script.onerror = function() {
-        finish(new Error('Connessione all’API Google Sheets non riuscita.'));
-      };
-      script.async = true;
-      script.src = url.toString();
-      document.head.appendChild(script);
+        function finish(error, value) {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          if (error) reject(error); else resolve(value);
+        }
+        window[callbackName] = function(response) {
+          if (!response || response.ok !== true) {
+            finish(new Error(response && response.error ? response.error : 'Risposta non valida dal database.'));
+            return;
+          }
+          finish(null, response.data);
+        };
+        script.onerror = function() {
+          finish(new Error('Connessione all’API Google Sheets non riuscita.'));
+        };
+        script.async = true;
+        script.src = url.toString();
+        document.head.appendChild(script);
+      });
     });
   }
 
