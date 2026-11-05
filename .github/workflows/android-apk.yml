@@ -4,12 +4,6 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
-    inputs:
-      publish_release:
-        description: "Pubblica anche una GitHub Release con l'APK"
-        required: true
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -25,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -36,13 +29,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Prepare web assets
+        run: |
+          mkdir -p www
+          cp index.html manifest.webmanifest sw.js www/
+          cp -R icons www/icons
+
       - name: Install dependencies
         run: npm install
 
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Copy web app into Android project
+      - name: Sync web assets
         run: npx cap sync android
 
       - name: Build debug APK
@@ -63,13 +62,12 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v1.0.${{ github.run_number }}
           name: OUR DATABASE Android v1.0.${{ github.run_number }}
           body: |
             APK Android generato automaticamente da GitHub Actions.
-            Build di tipo debug: per installare aggiornamenti successivi con la stessa firma, in questa fase potrebbe essere necessario disinstallare la versione precedente.
+            Questa prima versione è una build debug. Per aggiornamenti firmati in modo stabile configureremo una chiave release dedicata.
           files: output/OUR_DATABASE-debug.apk
           generate_release_notes: true
