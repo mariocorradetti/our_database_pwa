@@ -1798,6 +1798,13 @@ function loadAllItems(callback) {
         allItems =
           JSON.parse(result);
 
+        odbLastSyncAt = new Date();
+        updateSyncStatus(
+          'Ultimo aggiornamento: ' +
+          odbLastSyncAt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+          false
+        );
+
         renderRecentItems();
 
         updateFavoritesCount();
