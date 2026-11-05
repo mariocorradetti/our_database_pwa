@@ -159,6 +159,37 @@
       gap: 15px;
     }
 
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .sync-button {
+      white-space: nowrap;
+      min-height: 40px;
+      padding: 9px 13px;
+    }
+
+    .sync-status {
+      max-width: 1200px;
+      margin: -15px auto 18px;
+      text-align: right;
+      color: #8792a3;
+      font-size: 12px;
+      min-height: 16px;
+    }
+
+    .sync-status.error {
+      color: #ff9c9c;
+    }
+
+    @media (max-width: 520px) {
+      .topbar-actions { gap: 6px; }
+      .sync-button { min-height: 42px; padding: 8px 10px; font-size: 14px; }
+      .sync-status { margin-top: -12px; }
+    }
+
     .brand {
       font-size: 25px;
       font-weight: 700;
@@ -969,12 +1000,22 @@ button { -webkit-appearance:none; }
       DATABASE
     </div>
 
-    <div
-      id="userPill"
-      class="user-pill"
-    ></div>
+    <div class="topbar-actions">
+      <div
+        id="userPill"
+        class="user-pill"
+      ></div>
+      <button
+        id="syncButton"
+        class="btn btn-secondary sync-button"
+        type="button"
+        onclick="refreshDatabase(false)"
+        aria-label="Sincronizza i dati"
+      >↻ Aggiorna</button>
+    </div>
 
   </div>
+  <div class="sync-status" id="syncStatus" role="status" aria-live="polite">Database condiviso</div>
 
 
   <div class="content">
@@ -1518,6 +1559,9 @@ let editingItem = null;
 let editingDetails = {};
 
 let showingFavorites = false;
+let odbRefreshInProgress = false;
+let odbLastSyncAt = null;
+let odbAutoSyncTimer = null;
 
 
 /* =========================================================
@@ -1529,6 +1573,19 @@ document.addEventListener(
   function() {
 
     loadUsers();
+
+    // Sincronizza quando l'app torna in primo piano.
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden && currentUser) refreshDatabase(true);
+    });
+    window.addEventListener('focus', function() {
+      if (currentUser) refreshDatabase(true);
+    });
+
+    // Aggiornamento periodico leggero per mantenere allineati i due telefoni.
+    odbAutoSyncTimer = setInterval(function() {
+      if (currentUser && !document.hidden) refreshDatabase(true);
+    }, 60000);
 
   }
 );
@@ -1774,6 +1831,90 @@ function loadAllItems(callback) {
 
 }
 
+
+function updateSyncStatus(message, isError) {
+  const status = document.getElementById('syncStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle('error', Boolean(isError));
+}
+
+function refreshDatabase(showFeedback) {
+  if (!currentUser || odbRefreshInProgress) return;
+
+  odbRefreshInProgress = true;
+  const button = document.getElementById('syncButton');
+  if (button) {
+    button.disabled = true;
+    button.textContent = '↻ ...';
+  }
+  updateSyncStatus('Sincronizzazione in corso…', false);
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      try {
+        const freshItems = JSON.parse(result);
+        if (!Array.isArray(freshItems)) {
+          throw new Error('Formato dati non valido.');
+        }
+
+        allItems = freshItems;
+        odbLastSyncAt = new Date();
+
+        renderRecentItems();
+        updateFavoritesCount();
+
+        if (currentItem) {
+          const updated = allItems.find(function(item) {
+            return String(item.ID) === String(currentItem.ID);
+          });
+          if (updated) {
+            currentItem = updated;
+            updateFavoriteButton(currentItem);
+            renderRatings(currentItem);
+            const title = document.getElementById('detailTitle');
+            if (title) title.textContent = currentItem.Titolo || 'Senza titolo';
+          } else if (!document.getElementById('detailScreen').classList.contains('hidden')) {
+            showHome();
+          }
+        }
+
+        if (!document.getElementById('categoryScreen').classList.contains('hidden')) {
+          renderCategoryItems();
+        }
+
+        const search = document.getElementById('searchInput');
+        if (!document.getElementById('homeScreen').classList.contains('hidden') && search && search.value.trim()) {
+          handleSearch();
+        }
+
+        updateSyncStatus('Ultimo aggiornamento: ' + odbLastSyncAt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), false);
+        if (showFeedback) showToast('Database sincronizzato ✓');
+      } catch (error) {
+        updateSyncStatus('Errore di sincronizzazione', true);
+        if (showFeedback) showError('Errore sincronizzazione: ' + error.message);
+      } finally {
+        odbRefreshInProgress = false;
+        if (button) { button.disabled = false; button.textContent = '↻ Aggiorna'; }
+      }
+    })
+    .withFailureHandler(function(error) {
+      updateSyncStatus('Connessione non disponibile · riproverò automaticamente', true);
+      if (showFeedback) showError('Sincronizzazione non riuscita: ' + error.message);
+      odbRefreshInProgress = false;
+      if (button) { button.disabled = false; button.textContent = '↻ Aggiorna'; }
+    })
+    .getItems();
+
+  // Watchdog per evitare che il pulsante resti bloccato in caso di timeout.
+  setTimeout(function() {
+    if (odbRefreshInProgress) {
+      odbRefreshInProgress = false;
+      if (button) { button.disabled = false; button.textContent = '↻ Aggiorna'; }
+      updateSyncStatus('Timeout di sincronizzazione · riprova', true);
+    }
+  }, 35000);
+}
 
 function renderRecentItems() {
 
