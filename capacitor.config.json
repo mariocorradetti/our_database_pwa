@@ -1,7 +1,7 @@
 {
   "appId": "it.ourdatabase.app",
   "appName": "OUR DATABASE",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "androidScheme": "https"
   },
