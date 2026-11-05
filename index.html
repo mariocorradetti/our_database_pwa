@@ -1881,6 +1881,23 @@ function refreshDatabase(showFeedback) {
             renderRatings(currentItem);
             const title = document.getElementById('detailTitle');
             if (title) title.textContent = currentItem.Titolo || 'Senza titolo';
+
+            // Aggiorna anche i campi dinamici del dettaglio modificati dall'altro telefono.
+            if (!document.getElementById('detailScreen').classList.contains('hidden')) {
+              google.script.run
+                .withSuccessHandler(function(detailsResult) {
+                  try {
+                    currentItemDetails = JSON.parse(detailsResult);
+                    renderItemDetails();
+                  } catch (detailsError) {
+                    console.warn('Dettagli non aggiornati:', detailsError);
+                  }
+                })
+                .withFailureHandler(function(detailsError) {
+                  console.warn('Sincronizzazione dettagli non riuscita:', detailsError);
+                })
+                .getItemDetails(currentItem.ID);
+            }
           } else if (!document.getElementById('detailScreen').classList.contains('hidden')) {
             showHome();
           }
