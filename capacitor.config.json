@@ -1,0 +1,11 @@
+{
+  "appId": "it.ourdatabase.app",
+  "appName": "OUR DATABASE",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
