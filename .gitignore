@@ -2,3 +2,7 @@ node_modules/
 android/
 .DS_Store
 *.log
+.firebaserc
+functions/.env
+functions/.env.*
+!functions/.env.example
