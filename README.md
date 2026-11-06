@@ -35,7 +35,7 @@ La workflow GitHub Actions prepara automaticamente `www/index.html`, genera la p
 4. Aprire il run completato e scaricare l'artifact **OUR-DATABASE-APK**.
 5. Estrarre lo ZIP: contiene `app-debug.apk`.
 
-L'APK debug è adatto a installazione privata sui due telefoni. Per pubblicazione sul Play Store servirebbe una build firmata separatamente.
+L'APK generato dal branch di lavoro usa un identificativo separato (`it.ourdatabase.app.preview`) e il nome **OUR DATABASE Preview**: può essere installato accanto all'app attuale senza sovrascriverla. La build da `main`, invece, usa l'identificativo definitivo `it.ourdatabase.app`. Per pubblicazione sul Play Store servirebbe una build firmata separatamente.
 
 ## Sviluppo locale
 
