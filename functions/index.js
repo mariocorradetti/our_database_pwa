@@ -187,6 +187,8 @@ async function findItemRow(itemId) {
 
 async function routeAction(action, payload, user) {
   switch (action) {
+    case "getMe":
+      return { User_ID: user.row[0], Nome: user.name, Email: user.email };
     case "getUsers": {
       const table = await readTable(SHEETS.USERS);
       return table.rows.filter(row =>
