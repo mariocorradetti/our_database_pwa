@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-"""Generate Android launcher resources from the repository's sunflower icon."""
+"""Rasterize the official sunflower SVG and generate Android launcher resources."""
 from pathlib import Path
+import cairosvg
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
+SVG = ROOT / "icons" / "sunflower.svg"
 SOURCE = ROOT / "icons" / "icon-512.png"
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
 
-if not SOURCE.is_file():
-    raise SystemExit(f"Icon source not found: {SOURCE}")
+if not SVG.is_file():
+    raise SystemExit(f"Sunflower SVG not found: {SVG}")
+
+# Keep the raster PWA icons and Android artwork generated from one source of truth.
+cairosvg.svg2png(url=str(SVG), write_to=str(SOURCE), output_width=512, output_height=512)
+cairosvg.svg2png(url=str(SVG), write_to=str(ROOT / "icons" / "icon-192.png"), output_width=192, output_height=192)
 
 with Image.open(SOURCE) as opened:
     source = opened.convert("RGBA")
 
-if source.size != (512, 512):
-    source = source.resize((512, 512), Image.Resampling.LANCZOS)
-
-# Android legacy launcher icon sizes and adaptive foreground canvas sizes.
 densities = {
     "mdpi": (48, 108),
     "hdpi": (72, 162),
@@ -28,12 +30,9 @@ densities = {
 for density, (legacy_size, adaptive_size) in densities.items():
     folder = RES / f"mipmap-{density}"
     folder.mkdir(parents=True, exist_ok=True)
-
     legacy = source.resize((legacy_size, legacy_size), Image.Resampling.LANCZOS)
     legacy.save(folder / "ic_launcher.png", optimize=True)
     legacy.save(folder / "ic_launcher_round.png", optimize=True)
-
-    # Keep the artwork inside Android's adaptive-icon safe area.
     artwork_size = round(adaptive_size * 2 / 3)
     artwork = source.resize((artwork_size, artwork_size), Image.Resampling.LANCZOS)
     foreground = Image.new("RGBA", (adaptive_size, adaptive_size), (0, 0, 0, 0))
@@ -51,7 +50,6 @@ adaptive_xml = """<?xml version="1.0" encoding="utf-8"?>
 """
 (adaptive_dir / "ic_launcher.xml").write_text(adaptive_xml, encoding="utf-8")
 (adaptive_dir / "ic_launcher_round.xml").write_text(adaptive_xml, encoding="utf-8")
-
 values_dir = RES / "values"
 values_dir.mkdir(parents=True, exist_ok=True)
 (values_dir / "odb_launcher_background.xml").write_text(
@@ -62,5 +60,4 @@ values_dir.mkdir(parents=True, exist_ok=True)
 """,
     encoding="utf-8",
 )
-
-print("Sunflower launcher icons generated for all Android densities.")
+print("Official sunflower launcher icons generated for all Android densities.")
