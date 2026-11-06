@@ -4,10 +4,12 @@ Questo backend sostituisce Google Apps Script. Google Sheets resta il database p
 
 ## Requisiti iniziali
 
-- Un progetto Firebase collegato a un progetto Google Cloud.
-- Firebase Authentication con provider Google abilitato.
+- Progetto Firebase già creato: `our-database-2026`.
+- Piano Firebase Blaze attivo per distribuire Cloud Functions.
+- Firebase Authentication con provider Google abilitato (la parte app/login verrà collegata nello step successivo).
 - Google Sheets API abilitata nello stesso progetto Google Cloud.
-- Il foglio Google condiviso in modifica con l'identità di servizio usata dalle Cloud Functions.
+- Google Sheets API abilitata nel progetto Google Cloud.
+- Il foglio Google condiviso in modifica con l'identità runtime delle Cloud Functions: `1025401069308-compute@developer.gserviceaccount.com`.
 - La tabella USERS deve contenere le colonne `User_ID`, `Nome`, `Email`, `Attivo` (la quarta colonna deve essere TRUE per gli utenti autorizzati).
 - Node.js 22 e Firebase CLI.
 
@@ -20,7 +22,7 @@ Questo backend sostituisce Google Apps Script. Google Sheets resta il database p
 5. Installare dipendenze: `cd functions && npm install`.
 6. Deploy: `firebase deploy --only functions:sheetsApi`.
 
-Le Cloud Functions usano Application Default Credentials dell'identità runtime Google Cloud. Non inserire chiavi JSON di service account nel repository. Concedere a tale identità accesso di modifica al foglio Google e abilitare Google Sheets API.
+Le Cloud Functions usano Application Default Credentials dell'identità runtime Google Cloud. Per il progetto attuale, condividere il foglio Google con `1025401069308-compute@developer.gserviceaccount.com` come Editor. Non inserire chiavi JSON di service account nel repository.
 
 ## API
 
