@@ -37,6 +37,11 @@ jobs:
       - name: Prepare web application
         run: npm run prepare:web
 
+      - name: Use preview app identity on the working branch
+        if: github.ref_name == 'free-google-sheets-app'
+        run: |
+          node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync('capacitor.config.json','utf8'));p.appId += '.preview';p.appName += ' Preview';fs.writeFileSync('capacitor.config.json',JSON.stringify(p,null,2));"
+
       - name: Add Android platform
         run: npx cap add android
 
