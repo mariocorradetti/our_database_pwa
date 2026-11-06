@@ -5,6 +5,10 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { google } = require("googleapis");
+const { defineSecret } = require("firebase-functions/params");
+const crypto = require("crypto");
+
+const pairingCodeSecret = defineSecret("ODB_PAIRING_CODE");
 
 admin.initializeApp();
 setGlobalOptions({ region: "europe-west1", maxInstances: 5 });
@@ -148,33 +152,87 @@ function activeUserRow(table, email) {
   );
 }
 
-async function requireAppUser(req) {
+async function getDecodedToken(req) {
   const header = req.get("authorization") || "";
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new Error("Autenticazione richiesta. Accedi con Google.");
-  let decoded;
+  const match = header.match(/^Bearer\\s+(.+)$/i);
+  if (!match) throw new Error("Sessione non disponibile. Riapri l'app.");
   try {
-    decoded = await admin.auth().verifyIdToken(match[1]);
+    return await admin.auth().verifyIdToken(match[1]);
   } catch (_) {
-    throw new Error("Sessione non valida o scaduta. Accedi nuovamente.");
+    throw new Error("Sessione non valida o scaduta. Riapri l'app.");
   }
-  if (!decoded.email || decoded.email_verified !== true) {
-    throw new Error("L'account Google deve avere un indirizzo email verificato.");
-  }
-  const users = await readTable(SHEETS.USERS);
-  const row = activeUserRow(users, decoded.email);
-  if (!row) throw new Error("Questo account non è autorizzato a usare OUR DATABASE.");
-  return { uid: decoded.uid, email: decoded.email, name: row[1], row };
 }
 
+async function requireAppUser(req) {
+  const decoded = await getDecodedToken(req);
+  if (!decoded.firebase || decoded.firebase.sign_in_provider !== "anonymous") {
+    throw new Error("Metodo di accesso non consentito.");
+  }
+  const device = await admin.firestore().collection("authorizedDevices").doc(decoded.uid).get();
+  if (!device.exists || device.data().active !== true) {
+    throw new Error("Dispositivo non autorizzato. Inserisci il codice di attivazione.");
+  }
+  const users = await readTable(SHEETS.USERS);
+  const userId = device.data().userId;
+  const row = users.rows.find(r => String(r[0]).trim() === String(userId) && isTrue(r[3]));
+  if (!row || String(row[0]).trim() === "USR-000") {
+    throw new Error("Profilo non più attivo. Contatta l'amministratore.");
+  }
+  return { uid: decoded.uid, name: row[1], row, userId: row[0] };
+}
+
+async function pairDevice(req, payload) {
+  const decoded = await getDecodedToken(req);
+  if (!decoded.firebase || decoded.firebase.sign_in_provider !== "anonymous") {
+    throw new Error("Per attivare il dispositivo serve una sessione anonima.");
+  }
+  const submitted = String(payload.code || "");
+  const expected = String(pairingCodeSecret.value() || "");
+  const submittedBuffer = Buffer.from(submitted);
+  const expectedBuffer = Buffer.from(expected);
+  if (!expected || submittedBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(submittedBuffer, expectedBuffer)) {
+    throw new Error("Codice di attivazione non valido.");
+  }
+  const profileId = String(payload.profileId || "").trim();
+  if (!["USR-001", "USR-002"].includes(profileId)) {
+    throw new Error("Seleziona un profilo valido.");
+  }
+  const users = await readTable(SHEETS.USERS);
+  const profile = users.rows.find(r => String(r[0]).trim() === profileId && isTrue(r[3]));
+  if (!profile) throw new Error("Profilo non attivo nel foglio USERS.");
+  const db = admin.firestore();
+  const ref = db.collection("authorizedDevices").doc(decoded.uid);
+  const existing = await ref.get();
+  if (existing.exists && existing.data().active === true) {
+    return { success: true, alreadyPaired: true, profile: profile[1] };
+  }
+  const active = await db.collection("authorizedDevices").where("active", "==", true).get();
+  if (active.size >= 2) {
+    throw new Error("Sono già stati autorizzati due dispositivi. Serve una ri-autorizzazione manuale.");
+  }
+  await ref.set({
+    userId: profileId,
+    userName: profile[1],
+    active: true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  return { success: true, profile: profile[1] };
+}
 function newItemId() {
-  return "ITEM-" + require("crypto").randomBytes(4).toString("hex").toUpperCase();
+  return "ITEM-" + crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
 async function getItems() {
   const table = await readTable(SHEETS.ITEMS);
   return table.rows.filter(row => row[0] !== undefined && row[0] !== "")
-    .map(row => objectFromRow(table.headers, row));
+    .map(row => {
+      const item = objectFromRow(table.headers, row);
+      if (item.Valutazione_Luisa === undefined && item.Valutazione_Lei !== undefined) {
+        item.Valutazione_Luisa = item.Valutazione_Lei;
+      }
+      return item;
+    });
 }
 
 async function findItemRow(itemId) {
@@ -189,7 +247,7 @@ async function findItemRow(itemId) {
 async function routeAction(action, payload, user) {
   switch (action) {
     case "getMe":
-      return { User_ID: user.row[0], Nome: user.name, Email: user.email };
+      return { User_ID: user.row[0], Nome: user.name };
     case "getUsers": {
       const table = await readTable(SHEETS.USERS);
       return table.rows.filter(row =>
@@ -233,7 +291,7 @@ async function routeAction(action, payload, user) {
         Preferito: item.Preferito === true,
         Descrizione: item.Descrizione || "",
         Valutazione_Tu: item.Valutazione_Tu || "",
-        Valutazione_Luisa: item.Valutazione_Luisa || "",
+        Valutazione_Lei: item.Valutazione_Luisa || item.Valutazione_Lei || "",
         Creato_Da: user.name,
         Creato_Il: now,
         Modificato_Da: user.name,
@@ -248,8 +306,12 @@ async function routeAction(action, payload, user) {
       const found = await findItemRow(item.ID);
       const updated = { ...objectFromRow(found.table.headers, found.row) };
       ["Categoria", "Titolo", "Stato", "Preferito", "Descrizione",
-       "Valutazione_Tu", "Valutazione_Luisa"].forEach(key => {
-        if (item[key] !== undefined) updated[key] = item[key];
+       "Valutazione_Tu", "Valutazione_Luisa", "Valutazione_Lei"].forEach(key => {
+        if (item[key] !== undefined) {
+          const targetKey = key === "Valutazione_Luisa" && found.table.headers.includes("Valutazione_Lei")
+            ? "Valutazione_Lei" : key;
+          updated[targetKey] = item[key];
+        }
       });
       updated.Modificato_Da = user.name;
       updated.Modificato_Il = new Date().toISOString();
@@ -318,7 +380,7 @@ async function routeAction(action, payload, user) {
 const allowedOrigins = () => (process.env.ODB_ALLOWED_ORIGINS || "")
   .split(",").map(value => value.trim()).filter(Boolean);
 
-exports.sheetsApi = onRequest({ cors: false, timeoutSeconds: 60, memory: "256MiB" }, async (req, res) => {
+exports.sheetsApi = onRequest({ cors: false, timeoutSeconds: 60, memory: "256MiB", secrets: [pairingCodeSecret] }, async (req, res) => {
   const origin = req.get("origin") || "";
   const allowed = allowedOrigins();
   if (origin && allowed.includes(origin)) {
@@ -336,9 +398,15 @@ exports.sheetsApi = onRequest({ cors: false, timeoutSeconds: 60, memory: "256MiB
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Usa POST." }); return; }
 
   try {
-    const user = await requireAppUser(req);
     const body = req.body || {};
-    const data = await routeAction(String(body.action || ""), body.payload || {}, user);
+    const action = String(body.action || "");
+    if (action === "pairDevice") {
+      const data = await pairDevice(req, body.payload || {});
+      res.status(200).json({ ok: true, data });
+      return;
+    }
+    const user = await requireAppUser(req);
+    const data = await routeAction(action, body.payload || {}, user);
     res.status(200).json({ ok: true, data, user: { name: user.name } });
   } catch (error) {
     logger.warn("OUR DATABASE API request rejected/failed", {
