@@ -1,8 +1,5 @@
 node_modules/
 android/
+www/
 .DS_Store
 *.log
-.firebaserc
-functions/.env
-functions/.env.*
-!functions/.env.example

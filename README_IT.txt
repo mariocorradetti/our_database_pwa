@@ -25,13 +25,17 @@ Nelle proprietà script deve essere presente OUR_DATABASE_API_KEY.
 La Web App deve essere ridistribuita dopo ogni modifica del codice Apps Script, mantenendo l'URL /exec configurato in index.html.
 
 BUILD ANDROID
-Il workflow .github/workflows/android-apk.yml:
+Il workflow .github/workflows/build-android.yml:
 1. prepara la cartella www con l'interfaccia locale;
 2. genera il progetto Android Capacitor;
-3. compila l'APK debug;
-4. pubblica l'APK come artifact e come GitHub Release.
+3. genera le icone launcher Android partendo da icons/icon-512.png (girasole);
+4. compila l'APK debug e lo pubblica come artifact GitHub Actions; sul branch main crea anche una Release scaricabile.
 
-Dopo ogni push sul branch principale, GitHub Actions genera una nuova release. Per distribuire aggiornamenti senza disinstallare l'app servirà configurare una chiave di firma Android release stabile.
+Il branch free-google-sheets-app genera l'app Preview (solo artifact); il branch main genera l'app OUR DATABASE definitiva e una Release scaricabile. Le build debug non hanno ancora una chiave di firma stabile: per aggiornare l'app senza disinstallarla in futuro dovremo configurare una chiave Android release dedicata.
+
+ICONA E FUNZIONI NON ANCORA IMPLEMENTATE
+- L'icona ufficiale è il girasole presente in icons/icon-512.png; viene usata anche per generare le risorse launcher Android.
+- Il caricamento e la gestione delle foto non sono implementati in questa versione.
 
 TEST DA ESEGUIRE
 Su entrambi i telefoni verificare:
