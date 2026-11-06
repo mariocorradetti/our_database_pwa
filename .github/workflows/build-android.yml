@@ -52,7 +52,7 @@ jobs:
 
       - name: Generate sunflower launcher icons
         run: |
-          python -m pip install --disable-pip-version-check Pillow
+          python -m pip install --disable-pip-version-check Pillow CairoSVG
           python scripts/prepare-android-icons.py
 
       - name: Sync Capacitor
