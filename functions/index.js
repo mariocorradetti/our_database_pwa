@@ -139,8 +139,9 @@ async function deleteRowNumbers(name, rowNumbers) {
 
 function activeUserRow(table, email) {
   const normalized = String(email || "").trim().toLowerCase();
-  const index = table.headers.indexOf("Email");
-  if (index < 0) throw new Error('Nel foglio USERS manca la colonna "Email".');
+  // Mantiene la stessa struttura già usata da Apps Script: email in colonna C.
+  const index = 2;
+  if (table.headers.length <= index) throw new Error("Nel foglio USERS manca la colonna C (email).");
   return table.rows.find(row =>
     String(row[index] || "").trim().toLowerCase() === normalized &&
     isTrue(row[3])
