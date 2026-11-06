@@ -29,9 +29,9 @@ Il workflow .github/workflows/build-android.yml:
 1. prepara la cartella www con l'interfaccia locale;
 2. genera il progetto Android Capacitor;
 3. genera le icone launcher Android partendo da icons/icon-512.png (girasole);
-4. compila l'APK debug e lo pubblica come artifact GitHub Actions.
+4. compila l'APK debug e lo pubblica come artifact GitHub Actions; sul branch main crea anche una Release scaricabile.
 
-Il branch free-google-sheets-app genera l'app Preview; il branch main genera l'app OUR DATABASE definitiva. Le build debug non hanno ancora una chiave di firma stabile: per aggiornare l'app senza disinstallarla in futuro dovremo configurare una chiave Android release dedicata.
+Il branch free-google-sheets-app genera l'app Preview (solo artifact); il branch main genera l'app OUR DATABASE definitiva e una Release scaricabile. Le build debug non hanno ancora una chiave di firma stabile: per aggiornare l'app senza disinstallarla in futuro dovremo configurare una chiave Android release dedicata.
 
 ICONA E FUNZIONI NON ANCORA IMPLEMENTATE
 - L'icona ufficiale è il girasole presente in icons/icon-512.png; viene usata anche per generare le risorse launcher Android.
